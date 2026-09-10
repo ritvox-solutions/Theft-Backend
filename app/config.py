@@ -43,6 +43,6 @@ MQTT_USERNAME = os.getenv("MQTT_USERNAME", None)
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", None)
 MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "false").lower() in ("true", "1", "yes")
 
-# Hardware Theft Detection Thresholds (Calibrated for loads down to a 3W bulb ~ 13mA)
-THEFT_CURRENT_THRESHOLD = float(os.getenv("THEFT_CURRENT_THRESHOLD", "0.010"))  # 10 mA (approx ~2.3W @ 230V)
-CURRENT_NOISE_DEADBAND = float(os.getenv("CURRENT_NOISE_DEADBAND", "0.003"))      # 3 mA noise floor
+# Hardware Theft Detection Thresholds (30mA threshold: suppresses 10-15mA ADC noise floor while detecting bypass loads >=7W)
+THEFT_CURRENT_THRESHOLD = float(os.getenv("THEFT_CURRENT_THRESHOLD", "0.030"))  # 30 mA
+CURRENT_NOISE_DEADBAND = float(os.getenv("CURRENT_NOISE_DEADBAND", "0.005"))      # 5 mA noise floor

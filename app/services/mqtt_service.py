@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 _mqtt_client: mqtt.Client | None = None
 _client_lock = threading.Lock()
+_last_aggregation_time: dict = {}
 
 
 def get_mqtt_client() -> mqtt.Client | None:
@@ -96,14 +97,18 @@ def _process_reading(payload_str: str, topic: str):
     source_current = round(source_current, 3)
     voltage = round(voltage, 1)
     power = round(voltage * current, 2)
+    now_utc = datetime.now(timezone.utc)
     ts_str = data.get("timestamp")
     if ts_str:
         try:
             recorded_at = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+            # If device clock is drifting by more than 3s, use accurate server reception time
+            if abs((now_utc - recorded_at).total_seconds()) > 3.0:
+                recorded_at = now_utc
         except Exception:
-            recorded_at = datetime.now(timezone.utc)
+            recorded_at = now_utc
     else:
-        recorded_at = datetime.now(timezone.utc)
+        recorded_at = now_utc
 
     db = SessionLocal()
     try:
@@ -125,6 +130,7 @@ def _process_reading(payload_str: str, topic: str):
         db.add(reading)
         db.commit()
         db.refresh(reading)
+        logger.info("Saved reading %s for meter %s: V=%.1f, I=%.3f, Delta=%.3f", reading.id, meter_code, voltage, current, delta_current)
 
         # Broadcast reading immediately to connected WebSocket clients (<10ms)
         try:
@@ -228,8 +234,12 @@ def _process_reading(payload_str: str, topic: str):
 
         db.commit()
 
-        # Trigger background aggregation for historical rollup
-        threading.Thread(target=run_aggregation_task, args=(meter.id,), daemon=True).start()
+        # Trigger background aggregation for historical rollup (throttled to at most once per 60s per meter)
+        import time
+        now_ts = time.time()
+        if meter.id not in _last_aggregation_time or (now_ts - _last_aggregation_time[meter.id] > 60):
+            _last_aggregation_time[meter.id] = now_ts
+            threading.Thread(target=run_aggregation_task, args=(meter.id,), daemon=True).start()
 
     except Exception as e:
         logger.exception("Error processing reading for %s: %s", meter_code, e)
@@ -248,6 +258,7 @@ def _on_connect(client, userdata, flags, rc, properties=None):
 
 def _on_message(client, userdata, msg):
     payload = msg.payload.decode("utf-8")
+    logger.info("Received MQTT message on %s: %s", msg.topic, payload)
     threading.Thread(target=_process_reading, args=(payload, msg.topic), daemon=True).start()
 
 
