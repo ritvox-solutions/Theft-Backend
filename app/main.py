@@ -14,13 +14,31 @@ from app.services.ws_manager import ws_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    ws_manager.set_loop(asyncio.get_running_loop())
-    start_mqtt()
+    import logging
+    import os
+
+    # Attempt table creation safely
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logging.getLogger(__name__).warning("Could not auto-create tables during startup: %s", e)
+
+    try:
+        ws_manager.set_loop(asyncio.get_running_loop())
+    except Exception:
+        pass
+
+    # Background MQTT listener runs in persistent environments (local / VM / Docker),
+    # but is disabled in ephemeral Vercel serverless functions to avoid cold-start timeouts.
+    is_vercel = bool(os.getenv("VERCEL"))
+    if not is_vercel:
+        start_mqtt()
+
     try:
         yield
     finally:
-        stop_mqtt()
+        if not is_vercel:
+            stop_mqtt()
 
 
 app = FastAPI(title="Grid Watch API", lifespan=lifespan)
