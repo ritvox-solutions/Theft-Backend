@@ -10,6 +10,9 @@ class ReadingIn(BaseModel):
     meter_id: str  # human-readable meter_code, cross-checked against the device key's meter
     voltage: float
     current: float
+    source_current: float | None = None
+    delta_current: float | None = None
+    theft_detected: bool | None = None
     timestamp: datetime
 
 
@@ -30,8 +33,11 @@ class ReadingOut(BaseModel):
     meter_id: uuid.UUID
     voltage: float
     current: float
+    source_current: float | None = None
+    delta_current: float | None = None
+    theft_detected: bool = False
     power: float
-    frequency: float | None
-    power_factor: float | None
+    frequency: float | None = None
+    power_factor: float | None = None
     recorded_at: datetime
     created_at: datetime

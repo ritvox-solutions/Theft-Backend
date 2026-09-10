@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -6,13 +7,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import models  # noqa: F401 — ensures all models are registered on Base.metadata
 from app.config import CORS_ORIGIN_REGEX, CORS_ORIGINS
 from app.database import Base, engine
-from app.routers import admin, anomalies, auth, bills, billing, meters, ml, readings, users
+from app.routers import admin, anomalies, auth, bills, billing, meters, ml, readings, users, ws
+from app.services.mqtt_service import start_mqtt, stop_mqtt
+from app.services.ws_manager import ws_manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    yield
+    ws_manager.set_loop(asyncio.get_running_loop())
+    start_mqtt()
+    try:
+        yield
+    finally:
+        stop_mqtt()
 
 
 app = FastAPI(title="Grid Watch API", lifespan=lifespan)
@@ -35,6 +43,7 @@ app.include_router(admin.router)
 app.include_router(users.router)
 app.include_router(billing.router)
 app.include_router(bills.router)
+app.include_router(ws.router)
 
 
 @app.get("/health")

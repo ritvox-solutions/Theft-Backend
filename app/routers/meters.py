@@ -101,6 +101,11 @@ def set_relay(
     meter.relay_updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(meter)
+
+    # Publish immediate MQTT command if client is connected
+    from app.services.mqtt_service import publish_relay_command
+    publish_relay_command(meter.meter_code, meter.relay_state)
+
     return meter
 
 

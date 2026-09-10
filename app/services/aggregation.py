@@ -96,6 +96,13 @@ def aggregate_closed_windows(db: Session, meter_id: uuid.UUID) -> list[ReadingWi
     db.flush()  # assigns .id to newly-created windows before scoring/anomaly creation
 
     for window in touched:
+        # Idle / no-load state (power off, standby, or bench testing) is never an anomaly
+        if window.avg_voltage < 30.0 or window.avg_current < 0.05:
+            window.is_anomaly = False
+            window.anomaly_score = 0.0
+            window.scored_at = datetime.now(timezone.utc)
+            continue
+
         result = score_window(window)
         if result is None:
             continue

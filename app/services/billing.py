@@ -85,6 +85,21 @@ def generate_bill_for_cycle(
         .scalar()
     )
     units_kwh = float(units_kwh)
+    if units_kwh <= 0:
+        # Fallback to demo fast-tick readings sum
+        from app.models.reading import Reading
+        readings_power = (
+            db.query(Reading.power)
+            .filter(
+                Reading.meter_id == meter_id,
+                Reading.recorded_at >= start_dt,
+                Reading.recorded_at < end_dt,
+            )
+            .all()
+        )
+        total_p = sum(float(r[0]) for r in readings_power if r[0] and float(r[0]) > 0)
+        units_kwh = round((total_p * 10.0 / 3600000.0) * 100.0, 3)
+
     amount = compute_bill_amount(units_kwh, tariff)
 
     bill = Bill(

@@ -20,6 +20,8 @@ class Reading(Base):
     )
     voltage: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
     current: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    source_current: Mapped[float | None] = mapped_column(Numeric(6, 3), nullable=True)
+    delta_current: Mapped[float | None] = mapped_column(Numeric(6, 3), nullable=True)
     power: Mapped[float] = mapped_column(Numeric(8, 2), nullable=False)
     frequency: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     power_factor: Mapped[float | None] = mapped_column(Numeric(4, 3), nullable=True)
@@ -29,3 +31,9 @@ class Reading(Base):
     )
 
     meter: Mapped["Meter"] = relationship(back_populates="readings")
+
+    @property
+    def theft_detected(self) -> bool:
+        from app.config import THEFT_CURRENT_THRESHOLD
+        return bool(self.delta_current is not None and float(self.delta_current) >= THEFT_CURRENT_THRESHOLD)
+

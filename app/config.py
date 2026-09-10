@@ -34,3 +34,15 @@ JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 # admin notifications. Optional: unset -> notifications are skipped, logged, never fatal.
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "alerts@gridwatch.dev")
+
+# MQTT Broker Configuration
+MQTT_ENABLED = os.getenv("MQTT_ENABLED", "true").lower() in ("true", "1", "yes")
+MQTT_BROKER = os.getenv("MQTT_BROKER", "broker.hivemq.com")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_USERNAME = os.getenv("MQTT_USERNAME", None)
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", None)
+MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "false").lower() in ("true", "1", "yes")
+
+# Hardware Theft Detection Thresholds (Calibrated for loads down to a 3W bulb ~ 13mA)
+THEFT_CURRENT_THRESHOLD = float(os.getenv("THEFT_CURRENT_THRESHOLD", "0.010"))  # 10 mA (approx ~2.3W @ 230V)
+CURRENT_NOISE_DEADBAND = float(os.getenv("CURRENT_NOISE_DEADBAND", "0.003"))      # 3 mA noise floor
